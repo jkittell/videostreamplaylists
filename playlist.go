@@ -26,7 +26,7 @@ type Playlist struct {
 }
 
 func validate(masterPlaylistURL string) bool {
-	playlistURLs := getPlaylistURLs(masterPlaylistURL)
+	playlistURLs := GetPlaylistURLs(masterPlaylistURL)
 	for i := 0; i < playlistURLs.Length(); i++ {
 		playlistURL := playlistURLs.Lookup(i)
 		p := parsePlaylist(playlistURL)
@@ -84,7 +84,7 @@ func trackLivePlaylist(ctx context.Context, db database.MongoDB[Playlist], maste
 	collectionName := slugify.Slugify(masterPlaylistURL)
 	go savePlaylists(ctx, db, collectionName, playlistURLs)
 	for range time.Tick(2 * time.Second) {
-		arr := getPlaylistURLs(masterPlaylistURL)
+		arr := GetPlaylistURLs(masterPlaylistURL)
 		for i := 0; i < arr.Length(); i++ {
 			playlistURL := arr.Lookup(i)
 			playlistURLs <- playlistURL
@@ -102,7 +102,7 @@ func savePlaylists(context context.Context, db database.MongoDB[Playlist], colle
 	}
 }
 
-func getPlaylistURLs(masterPlaylistURL string) *structures.Array[string] {
+func GetPlaylistURLs(masterPlaylistURL string) *structures.Array[string] {
 	playlistURLs := structures.NewArray[string]()
 	playlist, err := client.Get(masterPlaylistURL, nil, nil)
 	if err != nil {
@@ -115,14 +115,14 @@ func getPlaylistURLs(masterPlaylistURL string) *structures.Array[string] {
 	for scanner.Scan() {
 		var streamURL string
 		line := scanner.Text()
-		if !strings.Contains(line, "#EXT") && strings.Contains(line, "m3u8") {
-			if !strings.Contains(line, "http") {
+		if !strings.HasPrefix(line, "#EXT") && strings.Contains(line, "m3u8") {
+			if !strings.HasPrefix(line, "http") {
 				streamURL = fmt.Sprintf("%s/%s", baseURL, line)
 			} else {
 				streamURL = line
 			}
 			playlistURLs.Push(streamURL)
-		} else if strings.Contains(line, "#EXT-X-I-FRAME-STREAM-INF") || strings.Contains(line, "#EXT-X-MEDIA") {
+		} else if strings.HasPrefix(line, "#EXT-X-I-FRAME-STREAM-INF") || strings.HasPrefix(line, "#EXT-X-MEDIA") {
 			regEx := regexp.MustCompile("URI=\"(.*?)\"")
 			match := regEx.MatchString(line)
 			if match {
@@ -133,7 +133,7 @@ func getPlaylistURLs(masterPlaylistURL string) *structures.Array[string] {
 				if !strings.Contains(line, "http") {
 					streamURL = fmt.Sprintf("%s/%s", baseURL, URI)
 				} else {
-					streamURL = line
+					streamURL = URI
 				}
 				playlistURLs.Push(streamURL)
 			}

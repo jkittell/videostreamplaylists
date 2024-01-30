@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/jkittell/data/database"
 	"github.com/jkittell/data/structures"
 	"log"
@@ -20,27 +20,30 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
+	done := make(chan bool)
 	jobs := make(chan Job)
-	tracking := structures.NewArray[string]()
-
-	ctx := context.Background()
 	db, err := database.NewMongoDB[Playlist]()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go receive(jobs)
+	go track(db, jobs)
+	<-done
+}
+
+func track(db database.MongoDB[Playlist], jobs chan Job) {
+	tracking := structures.NewArray[string]()
 	for job := range jobs {
 		for i := 0; i < tracking.Length(); i++ {
 			URL := tracking.Lookup(i)
 			if job.URL == URL {
 				continue
-			} else {
-				if validate(job.URL) {
-					go trackLivePlaylist(ctx, db, job.URL)
-					tracking.Push(job.URL)
-				}
 			}
+		}
+		if validate(job.URL) {
+			go trackLivePlaylist(context.TODO(), db, job.URL)
+			tracking.Push(job.URL)
 		}
 	}
 }

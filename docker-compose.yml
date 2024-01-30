@@ -1,4 +1,25 @@
 services:
+  videostreamplaylists:
+    image: jpkitt/videostreamplaylists:latest
+    environment:
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT}
+      - MONGODB_NAME=${MONGODB_NAME}
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      mongodb:
+        condition: service_started
+    restart: unless-stopped
+  rabbitmq:
+    image: 'rabbitmq:3.6-management-alpine'
+    ports:
+      # The standard AMQP protocol port
+      - 5672:5672
+      # HTTP management UI
+      - 15672:15672
+    restart: unless-stopped
   mongodb:
     image: mongo:latest
     ports:
